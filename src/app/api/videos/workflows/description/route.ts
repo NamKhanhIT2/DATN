@@ -40,7 +40,7 @@ export const { POST } = serve(
     const transcript = await context.run("get-transcript", async () => {
       const trackUrl = `https://stream.mux.com/${video.muxPlaybackId}/text/${video.muxTrackId}.txt`;
       const response = await fetch(trackUrl);
-      const text = response.text();
+      const text = await response.text();
 
       if (!text) {
         throw new Error("Bad request");
@@ -49,29 +49,28 @@ export const { POST } = serve(
       return text;
     })
 
-    const { body } = await context.api.openai.call(
-      "generate-description",
+    
+    const response = await context.call(
+      "generate-description-openrouter",
       {
-        token: process.env.OPENAI_API_KEY!,
-        operation: "chat.completions.create",
-        body: {
-          model: "gpt-4o",
-          messages: [
-            {
-              role: "system",
-              content: DESCRIPTION_SYSTEM_PROMPT,
-            },
-            {
-              role: "user",
-              content: transcript,
-            }
-          ],
+        url: "https://openrouter.ai/api/v1/chat/completions",
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
+          "Content-Type": "application/json",
         },
+        body: {
+          model: "poolside/laguna-m.1:free", 
+          messages: [
+            { role: "system", content: DESCRIPTION_SYSTEM_PROMPT },
+            { role: "user", content: transcript }
+          ]
+        }
       }
     );
 
-    const description = body.choices[0]?.message.content;
-
+    const body = response.body as any;
+    const description = body?.choices?.[0]?.message?.content?.trim();
     if (!description) {
       throw new Error("Bad request");
     }

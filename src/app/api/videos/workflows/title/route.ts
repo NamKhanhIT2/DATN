@@ -41,7 +41,7 @@ export const { POST } = serve(
     const transcript = await context.run("get-transcript", async () => {
       const trackUrl = `https://stream.mux.com/${video.muxPlaybackId}/text/${video.muxTrackId}.txt`;
       const response = await fetch(trackUrl);
-      const text = response.text();
+      const text = await response.text();
 
       if (!text) {
         throw new Error("Bad request");
@@ -49,33 +49,28 @@ export const { POST } = serve(
 
       return text;
     })
-
-    const { body } = await context.api.openai.call(
-      "generate-title",
+    
+    const response = await context.call(
+      "generate-title-openrouter",
       {
-        token: process.env.OPENAI_API_KEY!,
-        operation: "chat.completions.create",
-        body: {
-          model: "gpt-4o",
-          messages: [
-            {
-              role: "system",
-              content: TITLE_SYSTEM_PROMPT,
-            },
-            {
-              role: "user",
-              content: transcript,
-            }
-          ],
+        url: "https://openrouter.ai/api/v1/chat/completions",
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
+          "Content-Type": "application/json",
         },
+        body: {
+          model: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free", 
+          messages: [
+            { role: "system", content: TITLE_SYSTEM_PROMPT },
+            { role: "user", content: transcript }
+          ]
+        }
       }
     );
 
-    const title = body.choices[0]?.message.content;
-
-    if (!title) {
-      throw new Error("Bad request");
-    }
+    const body = response.body as any;
+    const title = body?.choices?.[0]?.message?.content?.trim();
 
     await context.run("update-video", async () => {
       await db
