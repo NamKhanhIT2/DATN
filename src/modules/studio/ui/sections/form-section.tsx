@@ -40,7 +40,7 @@ import {
 } from "@/components/ui/select";
 import { THUMBNAIL_FALLBACK } from "@/modules/videos/constants";
 import { VideoPlayer } from "@/modules/videos/ui/components/video-player";
-
+import { APP_URL } from "@/constants";
 import { ThumbnailUploadModal } from "../components/thumbnail-upload-modal";
 interface FormSectionProps {
   videoId: string;
@@ -142,6 +142,16 @@ const FormSectionSuspense = ({ videoId }: FormSectionProps) => {
       toast.error("Something went wrong");
     },
   });
+  const revalidate = trpc.videos.revalidate.useMutation({
+    onSuccess: () => {
+      utils.studio.getMany.invalidate();
+      utils.studio.getOne.invalidate({ id: videoId });
+      toast.success("Video revalidated");
+    },
+    onError: () => {
+      toast.error("Something went wrong");
+    },
+  });
   const generateDescription = trpc.videos.generateDescription.useMutation({
     onSuccess: () => {
       toast.success("Background job started", { description: "This may take some time" });
@@ -180,7 +190,7 @@ const FormSectionSuspense = ({ videoId }: FormSectionProps) => {
   };
 
 
-  const fullUrl = `${process.env.VERCEL_URL || "http://localhost:3000"}/videos/${videoId}`;
+  const fullUrl = `${APP_URL || "http://localhost:3000"}/videos/${videoId}`;
   const [isCopied, setIsCopied] = useState(false);
 
   const onCopy = async () => {
@@ -222,6 +232,10 @@ const FormSectionSuspense = ({ videoId }: FormSectionProps) => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => revalidate.mutate({ id: videoId })}>
+                    <RotateCcwIcon className="size-4 mr-2" />
+                    Revalidate
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => remove.mutate({ id: videoId })}>
                     <TrashIcon className="size-4 mr-2" />
                     Delete
