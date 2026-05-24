@@ -169,6 +169,10 @@ export const videosRouter = createTRPCRouter({
           muxAssetId: asset.id,
           duration,
         })
+        .where(and(
+          eq(videos.id, input.id),
+          eq(videos.userId, userId),
+        ))
         .returning();
 
       return updatedVideo;
