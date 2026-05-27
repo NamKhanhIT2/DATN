@@ -1,9 +1,13 @@
 "use client";
 
-import { ClapperboardIcon, UserCircleIcon, UserIcon } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { UserButton, SignInButton, SignedIn, SignedOut } from "@clerk/nextjs";
+import { ClapperboardIcon, UserCircleIcon, UserIcon, ShieldAlertIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { UserButton, SignInButton, SignedIn, SignedOut, useUser } from "@clerk/nextjs";
+
 export const AuthButton = () => {
+
+  const { user, isLoaded } = useUser();
+  const isAdmin = isLoaded && user?.publicMetadata?.role === "admin";
 
   return (
     <>
@@ -15,11 +19,20 @@ export const AuthButton = () => {
               href="/users/current"
               labelIcon={<UserIcon className="size-4" />}
             />
+            
             <UserButton.Link
               label="Studio"
               href="/studio"
               labelIcon={<ClapperboardIcon className="size-4" />}
             />
+            {isAdmin && (
+              <UserButton.Link
+                label="Admin Region"
+                href="/admin"
+                labelIcon={<ShieldAlertIcon className="size-4 text-emerald-500" />}
+              />
+            )}
+
             <UserButton.Action label="manageAccount" />
           </UserButton.MenuItems>
         </UserButton>
@@ -36,5 +49,5 @@ export const AuthButton = () => {
         </SignInButton>
       </SignedOut>
     </>
-  )
-}
+  );
+};

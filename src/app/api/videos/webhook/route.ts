@@ -34,9 +34,26 @@ export const POST = async (request: Request) => {
     return new Response("No signature found", { status: 401 });
   }
 
-  const payload = await request.json();
-  const body = JSON.stringify(payload);
+  // const payload = await request.json();
+  // const body = JSON.stringify(payload);
+  let body: string;
+  try {
+    body = await request.text();
+  } catch (error) {
+    return new Response("Failed to read request body", { status: 400 });
+  }
 
+  if (!body) {
+    return new Response("Request body is empty", { status: 400 });
+  }
+
+  let payload: unknown;
+  try {
+    payload = JSON.parse(body);
+  } catch (error) {
+    return new Response("Invalid JSON in request body", { status: 400 });
+  }
+  const typedPayload = payload as Record<string, unknown>;
   mux.webhooks.verifySignature(
     body,
     {
@@ -45,9 +62,9 @@ export const POST = async (request: Request) => {
     SIGNING_SECRET,
   );
 
-  switch (payload.type as WebhookEvent["type"]) {
+  switch (typedPayload.type as WebhookEvent["type"]) {
     case "video.asset.created": {
-      const data = payload.data as VideoAssetCreatedWebhookEvent["data"];
+      const data = typedPayload.data as VideoAssetCreatedWebhookEvent["data"];
 
       if (!data.upload_id) {
         return new Response("No upload ID found", { status: 400 });
@@ -63,7 +80,7 @@ export const POST = async (request: Request) => {
       break;
     }
     case "video.asset.ready": {
-      const data = payload.data as VideoAssetReadyWebhookEvent["data"];
+      const data = typedPayload.data as VideoAssetReadyWebhookEvent["data"];
       const playbackId = data.playback_ids?.[0].id;
 
       if (!data.upload_id) {
@@ -111,7 +128,7 @@ export const POST = async (request: Request) => {
     }
 
     case "video.asset.errored": {
-      const data = payload.data as VideoAssetErroredWebhookEvent["data"];
+      const data = typedPayload.data as VideoAssetErroredWebhookEvent["data"];
 
       if (!data.upload_id) {
         return new Response("Missing upload ID", { status: 400 });
@@ -127,7 +144,7 @@ export const POST = async (request: Request) => {
     }
 
     case "video.asset.deleted": {
-      const data = payload.data as VideoAssetDeletedWebhookEvent["data"];
+      const data = typedPayload.data as VideoAssetDeletedWebhookEvent["data"];
 
       if (!data.upload_id) {
         return new Response("Missing upload ID", { status: 400 });
@@ -142,7 +159,7 @@ export const POST = async (request: Request) => {
     }
 
     case "video.asset.track.ready": {
-      const data = payload.data as VideoAssetTrackReadyWebhookEvent["data"] & {
+      const data = typedPayload.data as VideoAssetTrackReadyWebhookEvent["data"] & {
         asset_id: string;
       }
 

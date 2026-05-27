@@ -1,4 +1,5 @@
 import { usersRouter } from '@/modules/users/server/procedures';
+import { adminRouter } from '@/modules/admin/server/procedures';
 import { studioRouter } from '@/modules/studio/server/procedures';
 import { videosRouter } from '@/modules/videos/server/procedures';
 import { searchRouter } from '@/modules/search/server/procedures';
@@ -23,6 +24,7 @@ export const appRouter = createTRPCRouter({
   comments: commentsRouter,
   commentReactions: commentReactionsRouter,
   suggestions: suggestionsRouter,
+  admin: adminRouter,
   playlists: playlistsRouter,
 });
 export type AppRouter = typeof appRouter;

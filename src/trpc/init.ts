@@ -6,10 +6,17 @@ import { initTRPC, TRPCError } from '@trpc/server';
 import { cache } from 'react';
 import superjson from "superjson";
 import { ratelimit } from '@/lib/ratelimit';
+
 export const createTRPCContext = cache(async () => {
-  const { userId } = await auth();
-  return { clerkUserId: userId };
+  const { userId, sessionClaims } = await auth();
+  const role = (sessionClaims?.metadata as { role?: string })?.role;
+
+  return { 
+    clerkUserId: userId,
+    clerkUserRole: role,
+  };
 });
+
 export type Context = Awaited<ReturnType<typeof createTRPCContext>>;
 const t = initTRPC.context<Context>().create({
   transformer: superjson,
@@ -18,6 +25,7 @@ const t = initTRPC.context<Context>().create({
 export const createTRPCRouter = t.router;
 export const createCallerFactory = t.createCallerFactory;
 export const baseProcedure = t.procedure;
+
 export const protectedProcedure = t.procedure.use(async function isAuthed(opts) {
   const { ctx } = opts;
 
@@ -45,6 +53,23 @@ export const protectedProcedure = t.procedure.use(async function isAuthed(opts) 
     ctx: {
       ...ctx,
       user,
+    },
+  });
+});
+
+export const adminProcedure = protectedProcedure.use(async function isAdmin(opts) {
+  const { ctx } = opts;
+  if (ctx.clerkUserRole !== "admin") {
+    throw new TRPCError({ 
+      code: "UNAUTHORIZED",
+      message: "Rejected"
+    });
+  }
+
+  return opts.next({
+    ctx: {
+      ...ctx,
+      role: ctx.clerkUserRole,
     },
   });
 });
