@@ -1,6 +1,6 @@
 "use client";
 
-import { AuthButton } from "@/modules/auth/ui/components/auth-button"; // Đảm bảo import đúng AuthButton của bạn
+import { AuthButton } from "@/modules/auth/ui/components/auth-button"; 
 import { Separator } from "@/components/ui/separator";
 
 export const AdminHeader = () => {

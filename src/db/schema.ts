@@ -10,6 +10,7 @@ import {
   uniqueIndex,
   uuid
 } from "drizzle-orm/pg-core";
+
 import {
   createInsertSchema,
   createSelectSchema,
@@ -286,3 +287,11 @@ export const videoReactionRelations = relations(videoReactions, ({ one }) => ({
 export const videoReactionSelectSchema = createSelectSchema(videoReactions);
 export const videoReactionInsertSchema = createInsertSchema(videoReactions);
 export const videoReactionUpdateSchema = createUpdateSchema(videoReactions);
+
+export const videoReports = pgTable("video_reports", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),   
+  videoId: uuid("video_id").references(() => videos.id, { onDelete: "cascade" }), 
+  reason: text("reason").notNull(),                                               
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});

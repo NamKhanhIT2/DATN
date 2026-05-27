@@ -8,6 +8,7 @@ import {
   VideoIcon, 
   UsersIcon, 
   FlagIcon, 
+  HomeIcon,
   ShieldCheckIcon 
 } from "lucide-react";
 
@@ -69,6 +70,15 @@ export const AdminSidebar = () => {
           );
         })}
       </nav>
+      <div className="px-3">
+        <Link
+          href="/"
+          className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground border border-dashed transition-all duration-200"
+        >
+          <HomeIcon className="h-4 w-4" />
+          <span>Back to Home</span>
+        </Link>
+      </div>
     </aside>
   );
 };

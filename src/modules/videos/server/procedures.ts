@@ -5,7 +5,7 @@ import { UTApi } from "uploadthing/server";
 import { mux } from "@/lib/mux";
 import { TRPCError } from "@trpc/server";
 import { workflow } from "@/lib/workflow";
-import { subscriptions, users, videoReactions, videos, videoUpdateSchema, videoViews } from "@/db/schema";
+import { subscriptions, users, videoReactions, videos, videoUpdateSchema, videoViews, videoReports } from "@/db/schema";
 import { baseProcedure, createTRPCRouter, protectedProcedure } from "@/trpc/init";
 
 export const videosRouter = createTRPCRouter({
@@ -526,4 +526,45 @@ export const videosRouter = createTRPCRouter({
       url: upload.url,
     };
   }),
+  report: protectedProcedure
+    .input(
+      z.object({
+        videoId: z.string().uuid(),
+        reason: z.string().min(1, "Vui lòng chọn hoặc điền lý do vi phạm"),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { videoId, reason } = input;
+      const userId = ctx.clerkUserId; 
+
+      const [dbUser] = await db
+        .select()
+        .from(users)
+        .where(eq(users.clerkId, userId!))
+        .limit(1);
+
+      if (!dbUser) {
+        throw new TRPCError({ code: "UNAUTHORIZED", message: "Tài khoản không tồn tại" });
+      }
+      const [targetVideo] = await db
+      .select()
+      .from(videos)
+      .where(eq(videos.id, videoId))
+      .limit(1);
+
+      if (targetVideo && targetVideo.userId === dbUser.id) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Bạn không thể tự báo cáo nội dung video vi phạm của chính mình.",
+        });
+      }
+      await db.insert(videoReports).values({
+        userId: dbUser.id,
+        videoId,
+        reason,
+      });
+
+      return { success: true };
+    }),
+    
 });
