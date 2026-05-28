@@ -44,7 +44,7 @@ export default function AdminUsersPage() {
                 <TableHead>Name</TableHead>
                 <TableHead>Clerk ID</TableHead>
                 <TableHead className="text-center">Video Count</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="text-right pr-12">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

@@ -1,6 +1,4 @@
 import { HydrateClient, trpc } from "@/trpc/server";
-import { PageClient } from "./client";
-import { Suspense } from "react";
 import { HomeView } from "@/modules/home/ui/views/home-view";
 import { DEFAULT_LIMIT } from "@/constants";
 

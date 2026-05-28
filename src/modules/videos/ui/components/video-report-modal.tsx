@@ -49,7 +49,7 @@ export const VideoReportModal = ({ videoId, open, onOpenChange }: VideoReportMod
             Report Violation
           </DialogTitle>
           <DialogDescription>
-            Select the most appropriate reason to help Tammi's system accurately identify community guideline violations.
+            Select the most appropriate reason to help Tammi&apos;s system accurately identify community guideline violations.
           </DialogDescription>
         </DialogHeader>
 

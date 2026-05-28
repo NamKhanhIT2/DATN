@@ -471,7 +471,7 @@ export const videosRouter = createTRPCRouter({
         throw new TRPCError({ code: "BAD_REQUEST" });
       }
 
-      const updateData: any = { updatedAt: new Date() };
+      const updateData: Partial<typeof videos.$inferInsert> = { updatedAt: new Date() };
       if (input.title !== undefined) updateData.title = input.title;
       if (input.description !== undefined) updateData.description = input.description;
       if (input.categoryId !== undefined) updateData.categoryId = input.categoryId;

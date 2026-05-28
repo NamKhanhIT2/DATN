@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { eq, and, or, lt, desc, sql, getTableColumns } from "drizzle-orm";
-import { TRPCError } from "@trpc/server";
+import { TRPCError } from "@trpc/server"; 
 import { createClerkClient } from "@clerk/nextjs/server";
 import { db } from "@/db";
 import { adminProcedure, createTRPCRouter } from "@/trpc/init";
@@ -11,6 +11,7 @@ import { UTApi } from "uploadthing/server";
 
 const utapi = new UTApi();
 const clerkClient = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY });
+
 export const adminRouter = createTRPCRouter({
   getOverviewMetrics: adminProcedure
     .query(async () => {
@@ -128,7 +129,8 @@ export const adminRouter = createTRPCRouter({
 
       return { success: true, deletedId: id };
     }),
-    getUsers: adminProcedure
+
+  getUsers: adminProcedure
     .input(z.object({ limit: z.number().min(1).max(100) }))
     .query(async ({ input }) => {
       const { limit } = input;
@@ -136,7 +138,6 @@ export const adminRouter = createTRPCRouter({
       const items = await db
         .select({
           ...getTableColumns(users),
-         
           videoCount: db.$count(videos, eq(videos.userId, users.id)),
         })
         .from(users)
@@ -146,7 +147,6 @@ export const adminRouter = createTRPCRouter({
       return { items };
     }),
 
-  
   toggleBanUser: adminProcedure
     .input(
       z.object({
@@ -159,7 +159,6 @@ export const adminRouter = createTRPCRouter({
 
       try {
         if (isBanned) {
-          
           await clerkClient.users.banUser(clerkId);
         } else {
           await clerkClient.users.unbanUser(clerkId);
@@ -172,7 +171,8 @@ export const adminRouter = createTRPCRouter({
         });
       }
     }),
-    getFlaggedVideos: adminProcedure
+
+  getFlaggedVideos: adminProcedure
     .input(
       z.object({
         limit: z.number().min(1).max(100),
@@ -186,6 +186,15 @@ export const adminRouter = createTRPCRouter({
           ...getTableColumns(videos),
           user: users,
           reportCount: sql<number>`cast(count(${videoReports.id}) as int)`,
+          reports: sql<any>`
+            json_agg(
+              json_build_object(
+                'id', ${videoReports.id},
+                'reason', ${videoReports.reason},
+                'createdAt', ${videoReports.createdAt}
+              )
+            ) filter (where ${videoReports.id} is not null)
+          `
         })
         .from(videoReports)
         .innerJoin(videos, eq(videoReports.videoId, videos.id))

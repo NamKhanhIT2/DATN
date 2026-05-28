@@ -39,8 +39,8 @@ export const POST = async (request: Request) => {
   let body: string;
   try {
     body = await request.text();
-  } catch (error) {
-    return new Response("Failed to read request body", { status: 400 });
+  } catch {
+    return new Response("Webhook error", { status: 400 });
   }
 
   if (!body) {
@@ -50,7 +50,7 @@ export const POST = async (request: Request) => {
   let payload: unknown;
   try {
     payload = JSON.parse(body);
-  } catch (error) {
+  } catch {
     return new Response("Invalid JSON in request body", { status: 400 });
   }
   const typedPayload = payload as Record<string, unknown>;

@@ -73,9 +73,9 @@ export const AdminSidebar = () => {
       <div className="px-3">
         <Link
           href="/"
-          className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground border border-dashed transition-all duration-200"
+          className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-emerald-600 bg-emerald-500/5 hover:bg-emerald-500/10 border border-emerald-500/20 transition-all duration-200"
         >
-          <HomeIcon className="h-4 w-4" />
+          <HomeIcon className="h-4 w-4 text-emerald-600" />
           <span>Back to Home</span>
         </Link>
       </div>

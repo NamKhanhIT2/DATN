@@ -7,7 +7,7 @@ interface AdminLayoutProps {
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
   return (
-    <div className="min-h-screen bg-background text-foreground antialiased">
+    <div suppressHydrationWarning className="min-h-screen bg-background text-foreground antialiased">
       <AdminSidebar />
 
       <div className="pl-0 md:pl-72 transition-all duration-300">
