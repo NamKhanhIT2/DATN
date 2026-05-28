@@ -164,10 +164,11 @@ export const adminRouter = createTRPCRouter({
           await clerkClient.users.unbanUser(clerkId);
         }
         return { success: true };
-      } catch (error: any) {
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Failed to update user status on Clerk.";
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
-          message: error.message || "Failed to update user status on Clerk.",
+          message: errorMessage,
         });
       }
     }),
@@ -186,7 +187,7 @@ export const adminRouter = createTRPCRouter({
           ...getTableColumns(videos),
           user: users,
           reportCount: sql<number>`cast(count(${videoReports.id}) as int)`,
-          reports: sql<any>`
+          reports: sql<{ id: string; reason: string; createdAt: string | null }[]>`
             json_agg(
               json_build_object(
                 'id', ${videoReports.id},
