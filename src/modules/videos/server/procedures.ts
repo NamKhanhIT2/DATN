@@ -1,11 +1,11 @@
 import { z } from "zod";
-import { and, desc, eq, getTableColumns, inArray, isNotNull, lt, or } from "drizzle-orm";
+import { and, desc, eq, getTableColumns, inArray, isNotNull, lt, sql, or } from "drizzle-orm";
 import { db } from "@/db";
 import { UTApi } from "uploadthing/server";
 import { mux } from "@/lib/mux";
 import { TRPCError } from "@trpc/server";
 import { workflow } from "@/lib/workflow";
-import { subscriptions, users, videoReactions, videos, videoUpdateSchema, videoViews, videoReports } from "@/db/schema";
+import { subscriptions, users, videoReactions, videos, videoUpdateSchema, videoViews, videoReports, videoProgress } from "@/db/schema";
 import { baseProcedure, createTRPCRouter, protectedProcedure } from "@/trpc/init";
 
 export const videosRouter = createTRPCRouter({
@@ -32,9 +32,14 @@ export const videosRouter = createTRPCRouter({
           .from(subscriptions)
           .where(eq(subscriptions.viewerId, userId))
       );
-
+      const viewerProgress = db.$with("viewer_progress").as(
+        db.select({
+          videoId: videoProgress.videoId,
+          progress: videoProgress.progress,
+        }).from(videoProgress).where(eq(videoProgress.userId, userId))
+      );
       const data = await db
-        .with(viewerSubscriptions)
+        .with(viewerSubscriptions, viewerProgress)
         .select({
           ...getTableColumns(videos),
           user: users,
@@ -47,6 +52,7 @@ export const videosRouter = createTRPCRouter({
             eq(videoReactions.videoId, videos.id),
             eq(videoReactions.type, "dislike"),
           )),
+          userProgress: viewerProgress.progress,
         })
         .from(videos)
         .innerJoin(users, eq(videos.userId, users.id))
@@ -54,6 +60,7 @@ export const videosRouter = createTRPCRouter({
           viewerSubscriptions,
           eq(viewerSubscriptions.userId, users.id)
         )
+        .leftJoin(viewerProgress, eq(viewerProgress.videoId, videos.id))
         .where(and(
           eq(videos.visibility, "public"),
           cursor
@@ -97,15 +104,28 @@ export const videosRouter = createTRPCRouter({
         limit: z.number().min(1).max(100),
       }),
     )
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const { cursor, limit } = input;
+      const { clerkUserId } = ctx;
 
       const viewCountSubquery = db.$count(
         videoViews,
         eq(videoViews.videoId, videos.id),
       );
+      let viewerId;
+      if (clerkUserId) {
+        const [user] = await db.select().from(users).where(inArray(users.clerkId, clerkUserId ? [clerkUserId] : []));
+        if (user) viewerId = user.id;
+      }
 
+      const viewerProgress = db.$with("viewer_progress").as(
+        db.select({
+            videoId: videoProgress.videoId,
+            progress: videoProgress.progress,
+          }).from(videoProgress).where(inArray(videoProgress.userId, viewerId ? [viewerId] : []))
+      );
       const data = await db
+        .with(viewerProgress)
         .select({
           ...getTableColumns(videos),
           user: users,
@@ -118,9 +138,11 @@ export const videosRouter = createTRPCRouter({
             eq(videoReactions.videoId, videos.id),
             eq(videoReactions.type, "dislike"),
           )),
+          userProgress: viewerProgress.progress,
         })
         .from(videos)
         .innerJoin(users, eq(videos.userId, users.id))
+        .leftJoin(viewerProgress, eq(viewerProgress.videoId, videos.id))
         .where(and(
           eq(videos.visibility, "public"),
           cursor
@@ -161,15 +183,33 @@ export const videosRouter = createTRPCRouter({
         cursor: z.object({
           id: z.string().uuid(),
           updatedAt: z.date(),
+          watched: z.number().optional(), // 1. Cập nhật cursor để lưu trạng thái "đã xem"
         })
         .nullish(),
         limit: z.number().min(1).max(100),
       }),
     )
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const { cursor, limit, categoryId, userId } = input;
+      const { clerkUserId } = ctx;
+
+      let viewerId;
+      if (clerkUserId) {
+        const [user] = await db.select().from(users).where(inArray(users.clerkId, clerkUserId ? [clerkUserId] : []));
+        if (user) viewerId = user.id;
+      }
+
+      const viewerProgress = db.$with("viewer_progress").as(
+        db.select({
+            videoId: videoProgress.videoId,
+            progress: videoProgress.progress,
+          }).from(videoProgress).where(inArray(videoProgress.userId, viewerId ? [viewerId] : []))
+      );
+
+      const watchedState = sql<number>`CASE WHEN ${viewerProgress.videoId} IS NOT NULL THEN 1 ELSE 0 END`;
 
       const data = await db
+        .with(viewerProgress)
         .select({
           ...getTableColumns(videos),
           user: users,
@@ -182,35 +222,47 @@ export const videosRouter = createTRPCRouter({
             eq(videoReactions.videoId, videos.id),
             eq(videoReactions.type, "dislike"),
           )),
+          userProgress: viewerProgress.progress,
         })
         .from(videos)
         .innerJoin(users, eq(videos.userId, users.id))
+        .leftJoin(viewerProgress, eq(viewerProgress.videoId, videos.id))
         .where(and(
           eq(videos.visibility, "public"),
           userId ? eq(videos.userId, userId) : undefined,
           categoryId ? eq(videos.categoryId, categoryId) : undefined,
+         
           cursor
             ? or(
-                lt(videos.updatedAt, cursor.updatedAt),
-                  and(
-                    eq(videos.updatedAt, cursor.updatedAt),
-                    lt(videos.id, cursor.id)
-                  )
+                lt(watchedState, cursor.watched ?? 0),
+                and(
+                  eq(watchedState, cursor.watched ?? 0),
+                  lt(videos.updatedAt, cursor.updatedAt)
+                ),
+                and(
+                  eq(watchedState, cursor.watched ?? 0),
+                  eq(videos.updatedAt, cursor.updatedAt),
+                  lt(videos.id, cursor.id)
                 )
+              )
             : undefined,
-        )).orderBy(desc(videos.updatedAt), desc(videos.id))
-        // Add 1 to the limit to check if there is more data
+        ))
+       
+        .orderBy(
+          desc(watchedState), 
+          desc(videos.updatedAt), 
+          desc(videos.id)
+        )
         .limit(limit + 1)
 
       const hasMore = data.length > limit;
-      // Remove the last item if there is more data
       const items = hasMore ? data.slice(0, -1) : data;
-      // Set the next cursor to the last item if there is more data
       const lastItem = items[items.length - 1];
       const nextCursor = hasMore 
         ? {
           id: lastItem.id,
           updatedAt: lastItem.updatedAt,
+          watched: lastItem.userProgress !== null ? 1 : 0, 
         }
         : null;
 
@@ -250,14 +302,18 @@ export const videosRouter = createTRPCRouter({
           .from(subscriptions)
           .where(inArray(subscriptions.viewerId, userId ? [userId] : []))
       );
+      const viewerProgress = db.$with("viewer_progress").as(
+        db.select().from(videoProgress).where(inArray(videoProgress.userId, userId ? [userId] : []))
+      );
       const [existingVideo] = await db
-        .with(viewerReactions, viewerSubscriptions)
+        .with(viewerReactions, viewerSubscriptions, viewerProgress)
         .select({
           ...getTableColumns(videos),
           user: {
             ...getTableColumns(users),
             subscriberCount: db.$count(subscriptions, eq(subscriptions.creatorId, users.id)),
             viewerSubscribed: isNotNull(viewerSubscriptions.viewerId).mapWith(Boolean),
+            userProgress: viewerProgress.progress,
           },
           viewCount: db.$count(videoViews, eq(videoViews.videoId, videos.id)),
           likeCount: db.$count(
@@ -275,11 +331,13 @@ export const videosRouter = createTRPCRouter({
             ),
           ),
           viewerReaction: viewerReactions.type,
+          userProgress: viewerProgress.progress,
         })
         .from(videos)
         .innerJoin(users, eq(videos.userId, users.id))
         .leftJoin(viewerReactions, eq(viewerReactions.videoId, videos.id))
         .leftJoin(viewerSubscriptions, eq(viewerSubscriptions.creatorId, users.id))
+        .leftJoin(viewerProgress, eq(viewerProgress.videoId, videos.id))
         .where(eq(videos.id, input.id))
         // .groupBy(
         //   videos.id,
@@ -526,6 +584,32 @@ export const videosRouter = createTRPCRouter({
       url: upload.url,
     };
   }),
+  saveWatchProgress: protectedProcedure
+    .input(
+      z.object({
+        videoId: z.string().uuid(),
+        progress: z.number(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { id: userId } = ctx.user;
+
+      await db.insert(videoProgress)
+        .values({
+          userId,
+          videoId: input.videoId,
+          progress: input.progress,
+        })
+        .onConflictDoUpdate({
+          target: [videoProgress.userId, videoProgress.videoId],
+          set: {
+            progress: input.progress,
+            updatedAt: new Date(),
+          },
+        });
+
+      return { success: true };
+    }),
   report: protectedProcedure
     .input(
       z.object({

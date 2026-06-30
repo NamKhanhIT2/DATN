@@ -3,7 +3,7 @@ import { and, desc, eq, getTableColumns, lt, or, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { db } from "@/db";
 import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
-import { playlists, playlistVideos, users, videoReactions, videos, videoViews } from "@/db/schema";
+import { playlists, playlistVideos, users, videoReactions, videos,videoProgress, videoViews } from "@/db/schema";
 
 export const playlistsRouter = createTRPCRouter({
   remove: protectedProcedure
@@ -85,8 +85,18 @@ export const playlistsRouter = createTRPCRouter({
           .where(eq(playlistVideos.playlistId, playlistId))
       );
 
+      const viewerProgress = db.$with("viewer_progress").as(
+        db
+          .select({
+            videoId: videoProgress.videoId,
+            progress: videoProgress.progress,
+          })
+          .from(videoProgress)
+          .where(eq(videoProgress.userId, userId))
+      );
+
       const data = await db
-        .with(videosFromPlaylist)
+        .with(videosFromPlaylist, viewerProgress) 
         .select({
           ...getTableColumns(videos),
           user: users,
@@ -99,10 +109,12 @@ export const playlistsRouter = createTRPCRouter({
             eq(videoReactions.videoId, videos.id),
             eq(videoReactions.type, "dislike"),
           )),
+          userProgress: viewerProgress.progress, 
         })
         .from(videos)
         .innerJoin(users, eq(videos.userId, users.id))
         .innerJoin(videosFromPlaylist, eq(videos.id, videosFromPlaylist.videoId))
+        .leftJoin(viewerProgress, eq(viewerProgress.videoId, videos.id))
         .where(and(
           eq(videos.visibility, "public"),
           cursor
@@ -115,13 +127,10 @@ export const playlistsRouter = createTRPCRouter({
                 )
             : undefined,
         )).orderBy(desc(videos.updatedAt), desc(videos.id))
-        // Add 1 to the limit to check if there is more data
         .limit(limit + 1)
 
       const hasMore = data.length > limit;
-      // Remove the last item if there is more data
       const items = hasMore ? data.slice(0, -1) : data;
-      // Set the next cursor to the last item if there is more data
       const lastItem = items[items.length - 1];
       const nextCursor = hasMore 
         ? {
@@ -424,8 +433,18 @@ export const playlistsRouter = createTRPCRouter({
           ))
       );
 
+      const viewerProgress = db.$with("viewer_progress").as(
+        db
+          .select({
+            videoId: videoProgress.videoId,
+            progress: videoProgress.progress,
+          })
+          .from(videoProgress)
+          .where(eq(videoProgress.userId, userId))
+      );
+
       const data = await db
-        .with(viewerVideoReactions)
+        .with(viewerVideoReactions, viewerProgress) 
         .select({
           ...getTableColumns(videos),
           user: users,
@@ -439,10 +458,12 @@ export const playlistsRouter = createTRPCRouter({
             eq(videoReactions.videoId, videos.id),
             eq(videoReactions.type, "dislike"),
           )),
+          userProgress: viewerProgress.progress, 
         })
         .from(videos)
         .innerJoin(users, eq(videos.userId, users.id))
         .innerJoin(viewerVideoReactions, eq(videos.id, viewerVideoReactions.videoId))
+        .leftJoin(viewerProgress, eq(viewerProgress.videoId, videos.id)) 
         .where(and(
           eq(videos.visibility, "public"),
           cursor
@@ -455,13 +476,10 @@ export const playlistsRouter = createTRPCRouter({
                 )
             : undefined,
         )).orderBy(desc(viewerVideoReactions.likedAt), desc(videos.id))
-        // Add 1 to the limit to check if there is more data
         .limit(limit + 1)
 
       const hasMore = data.length > limit;
-      // Remove the last item if there is more data
       const items = hasMore ? data.slice(0, -1) : data;
-      // Set the next cursor to the last item if there is more data
       const lastItem = items[items.length - 1];
       const nextCursor = hasMore 
         ? {
@@ -500,8 +518,18 @@ export const playlistsRouter = createTRPCRouter({
           .where(eq(videoViews.userId, userId))
       );
 
+      const viewerProgress = db.$with("viewer_progress").as(
+        db
+          .select({
+            videoId: videoProgress.videoId,
+            progress: videoProgress.progress,
+          })
+          .from(videoProgress)
+          .where(eq(videoProgress.userId, userId))
+      );
+
       const data = await db
-        .with(viewerVideoViews)
+        .with(viewerVideoViews, viewerProgress) 
         .select({
           ...getTableColumns(videos),
           user: users,
@@ -515,10 +543,12 @@ export const playlistsRouter = createTRPCRouter({
             eq(videoReactions.videoId, videos.id),
             eq(videoReactions.type, "dislike"),
           )),
+          userProgress: viewerProgress.progress, 
         })
         .from(videos)
         .innerJoin(users, eq(videos.userId, users.id))
         .innerJoin(viewerVideoViews, eq(videos.id, viewerVideoViews.videoId))
+        .leftJoin(viewerProgress, eq(viewerProgress.videoId, videos.id)) 
         .where(and(
           eq(videos.visibility, "public"),
           cursor
@@ -531,13 +561,10 @@ export const playlistsRouter = createTRPCRouter({
                 )
             : undefined,
         )).orderBy(desc(viewerVideoViews.viewedAt), desc(videos.id))
-        // Add 1 to the limit to check if there is more data
         .limit(limit + 1)
 
       const hasMore = data.length > limit;
-      // Remove the last item if there is more data
       const items = hasMore ? data.slice(0, -1) : data;
-      // Set the next cursor to the last item if there is more data
       const lastItem = items[items.length - 1];
       const nextCursor = hasMore 
         ? {

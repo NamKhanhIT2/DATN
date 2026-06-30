@@ -295,3 +295,26 @@ export const videoReports = pgTable("video_reports", {
   reason: text("reason").notNull(),                                               
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+export const videoProgress = pgTable("video_progress", {
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  videoId: uuid("video_id").references(() => videos.id, { onDelete: "cascade" }).notNull(),
+  progress: integer("progress").default(0).notNull(), // Lưu bằng mili-giây (ms)
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (t) => [
+  primaryKey({
+    name: "video_progress_pk",
+    columns: [t.userId, t.videoId],
+  }),
+]);
+
+export const videoProgressRelations = relations(videoProgress, ({ one }) => ({
+  user: one(users, {
+    fields: [videoProgress.userId],
+    references: [users.id],
+  }),
+  video: one(videos, {
+    fields: [videoProgress.videoId],
+    references: [videos.id],
+  })
+}));

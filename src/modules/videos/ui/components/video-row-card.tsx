@@ -86,7 +86,9 @@ export const VideoRowCard = ({
   data,
   size="default",
   onRemove,
-}: VideoRowCardProps) => {
+}: VideoRowCardProps & { data: { userProgress?: number | null } }) => { // Mở rộng type tránh lỗi TS
+
+
   const compactViews = useMemo(() => {
     return Intl.NumberFormat("en", {
       notation: "compact"
@@ -101,13 +103,16 @@ export const VideoRowCard = ({
 
   return (
     <div className={videoRowCardVariants({ size })}>
+      {/* KHU VỰC THUMBNAIL */}
       <Link prefetch  href={`/videos/${data.id}`} className={thumbnailVariants({ size })}>
         <VideoThumbnail
           imageUrl={data.thumbnailUrl}
           previewUrl={data.previewUrl}
           title={data.title}
           duration={data.duration}
+          userProgress={data.userProgress}
         />
+
       </Link>
 
       {/* Info*/}

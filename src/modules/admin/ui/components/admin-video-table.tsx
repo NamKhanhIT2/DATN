@@ -1,17 +1,46 @@
 "use client";
 
+import { useState } from "react";
 import { trpc } from "@/trpc/client";
 import { 
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Trash2Icon, Loader2Icon, EyeIcon, ThumbsUpIcon, GlobeIcon, LockIcon } from "lucide-react";
+import { 
+  Trash2Icon, 
+  Loader2Icon, 
+  EyeIcon, 
+  ThumbsUpIcon, 
+  GlobeIcon, 
+  LockIcon,
+  MoreVerticalIcon
+} from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import Image from "next/image";
 import Link from "next/link";
 
 export const AdminVideoTable = () => {
   const utils = trpc.useUtils();
+
+  // State quản lý Modal Delete Video
+  const [deleteDialog, setDeleteDialog] = useState<{ id: string; title: string } | null>(null);
 
   const { 
     data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading 
@@ -26,11 +55,13 @@ export const AdminVideoTable = () => {
   const deleteMutation = trpc.admin.deleteVideoByAdmin.useMutation({
     onSuccess: () => {
       toast.success("Delete successful!");
+      setDeleteDialog(null); // Đóng modal
       utils.admin.getVideos.invalidate();
       utils.admin.getOverviewMetrics.invalidate();
     },
     onError: (error) => {
       toast.error(error.message || "Failed to delete video.");
+      setDeleteDialog(null);
     }
   });
 
@@ -56,7 +87,7 @@ export const AdminVideoTable = () => {
               <TableHead className="w-[120px]">Visibility</TableHead>
               <TableHead className="w-[120px]">Status</TableHead>
               <TableHead className="w-[130px]">Interactions</TableHead>
-              <TableHead className="text-right w-[120px] pr-14">Actions</TableHead>
+              <TableHead className="text-right w-[80px] pr-6">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -68,7 +99,7 @@ export const AdminVideoTable = () => {
               </TableRow>
             ) : (
               allVideos.map((video) => {
-                const isCurrentlyDeleting = deleteMutation.isPending && deleteMutation.variables?.id === video.id;
+                const isCurrentlyDeleting = deleteMutation.isPending && deleteDialog?.id === video.id;
 
                 return (
                   <TableRow key={video.id} className="hover:bg-muted/50 transition-colors">
@@ -88,9 +119,8 @@ export const AdminVideoTable = () => {
                       </Link>
                     </TableCell>
 
-                    
                     <TableCell className="max-w-[160px]">
-                      <div className="font-semibold truncate text-foreground">{video.title}</div>
+                      <div className="font-medium truncate text-foreground text-sm">{video.title}</div>
                       <div className="text-xs text-muted-foreground truncate mt-0.5">
                         {video.description || "No description"}
                       </div>
@@ -102,7 +132,7 @@ export const AdminVideoTable = () => {
 
                     <TableCell>
                       {video.visibility === "public" ? (
-                        <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 rounded-md border border-emerald-200/40">
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground bg-secondary px-2 py-0.5 rounded-md">
                           <GlobeIcon className="h-3 w-3" />
                           Public
                         </span>
@@ -115,9 +145,9 @@ export const AdminVideoTable = () => {
                     </TableCell>
 
                     <TableCell>
-                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold tracking-wide ${
+                      <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium tracking-wide ${
                         video.muxStatus === "ready" 
-                          ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" 
+                          ? "bg-secondary text-secondary-foreground" 
                           : "bg-amber-500/10 text-amber-500 border border-amber-500/20"
                       }`}>
                         {video.muxStatus || "processing"}
@@ -135,25 +165,34 @@ export const AdminVideoTable = () => {
                       </div>
                     </TableCell>
 
-                    <TableCell className="text-right pr-8">
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        className="h-8 px-3 shadow-none"
-                        disabled={deleteMutation.isPending}
-                        onClick={() => {
-                          if (confirm(`⚠️ Warning:\nAre you sure you want to permanently delete the video "${video.title}"?`)) {
-                            deleteMutation.mutate({ id: video.id });
-                          }
-                        }}
-                      >
-                        {isCurrentlyDeleting ? (
-                          <Loader2Icon className="h-3.5 w-3.5 animate-spin mr-1" />
-                        ) : (
-                          <Trash2Icon className="h-3.5 w-3.5 mr-1" />
-                        )}
-                        Delete
-                      </Button>
+                    <TableCell className="text-right pr-4">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" disabled={isCurrentlyDeleting}>
+                            {isCurrentlyDeleting ? (
+                              <Loader2Icon className="h-4 w-4 animate-spin text-muted-foreground" />
+                            ) : (
+                              <MoreVerticalIcon className="h-4 w-4 text-muted-foreground" />
+                            )}
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem asChild>
+                            <Link href={`/videos/${video.id}`} target="_blank" className="cursor-pointer">
+                              <EyeIcon className="mr-2 h-4 w-4" /> View Details
+                            </Link>
+                          </DropdownMenuItem>
+                          
+                          <DropdownMenuSeparator />
+                          
+                          <DropdownMenuItem 
+                            className="text-destructive focus:bg-destructive/10 focus:text-destructive cursor-pointer"
+                            onClick={() => setDeleteDialog({ id: video.id, title: video.title })}
+                          >
+                            <Trash2Icon className="mr-2 h-4 w-4" /> Delete Video
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 );
@@ -162,6 +201,7 @@ export const AdminVideoTable = () => {
           </TableBody>
         </Table>
       </div>
+
       {hasNextPage && (
         <div className="flex justify-center pt-2">
           <Button
@@ -178,6 +218,36 @@ export const AdminVideoTable = () => {
           </Button>
         </div>
       )}
+
+      {/* MODAL XÁC NHẬN XÓA VIDEO */}
+      <AlertDialog open={!!deleteDialog} onOpenChange={(open) => !open && setDeleteDialog(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Video</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to permanently delete <strong className="text-foreground">"{deleteDialog?.title}"</strong>? 
+              This action cannot be undone and the video file will be removed from the system.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteMutation.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteMutation.isPending}
+              onClick={(e) => {
+                e.preventDefault();
+                if (deleteDialog) {
+                  deleteMutation.mutate({ id: deleteDialog.id });
+                }
+              }}
+            >
+              {deleteMutation.isPending && <Loader2Icon className="h-4 w-4 animate-spin mr-2" />}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </div>
   );
 };

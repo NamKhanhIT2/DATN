@@ -58,6 +58,8 @@ const VideoSectionSuspense = ({ videoId }: VideoSectionProps) => {
           onPlay={handlePlay}
           playbackId={video.muxPlaybackId}
           thumbnailUrl={video.thumbnailUrl}
+          initialProgress={video.userProgress || 0}
+          videoId={videoId}
         />
       </div>
       <VideoBanner status={video.muxStatus} />

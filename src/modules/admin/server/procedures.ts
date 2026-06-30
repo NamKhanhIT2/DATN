@@ -206,4 +206,20 @@ export const adminRouter = createTRPCRouter({
 
       return { items };
     }),
+  dismissVideoReports: adminProcedure
+    .input(
+      z.object({
+        videoId: z.string().uuid(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const { videoId } = input;
+
+      // Xóa tất cả các bản ghi report liên quan đến video này
+      await db
+        .delete(videoReports)
+        .where(eq(videoReports.videoId, videoId));
+
+      return { success: true };
+    }),
 });
