@@ -86,7 +86,7 @@ Open http://localhost:3000 with your browser to see the result.
 ---
 * dev - Start development server
 
-* uild - Build for production
+* build - Build for production
 
 * start - Start production server
 

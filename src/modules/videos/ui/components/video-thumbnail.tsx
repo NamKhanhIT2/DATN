@@ -21,7 +21,6 @@ export const VideoThumbnailSkeleton = () => {
 
 export const VideoThumbnail = ({
   imageUrl,
-  previewUrl,
   title,
   duration,
   userProgress, // CHẤP NHẬN prop userProgress

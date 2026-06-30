@@ -225,7 +225,7 @@ export const AdminVideoTable = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Video</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to permanently delete <strong className="text-foreground">"{deleteDialog?.title}"</strong>? 
+              Are you sure you want to permanently delete <strong className="text-foreground">&quot;{deleteDialog?.title}&quot;</strong>? 
               This action cannot be undone and the video file will be removed from the system.
             </AlertDialogDescription>
           </AlertDialogHeader>
