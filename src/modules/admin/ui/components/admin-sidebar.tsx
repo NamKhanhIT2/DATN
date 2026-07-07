@@ -44,7 +44,7 @@ export const AdminSidebar = () => {
       <div className="flex items-center gap-2 px-3 py-2">
         <ShieldCheckIcon className="h-6 w-6 text-emerald-500" />
         <span className="text-lg font-bold tracking-tight bg-gradient-to-r from-emerald-500 to-teal-600 bg-clip-text text-transparent">
-          Tammi Admin
+          Tami Admin
         </span>
       </div>
 

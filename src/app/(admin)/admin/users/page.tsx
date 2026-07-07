@@ -117,7 +117,7 @@ export default function AdminUsersPage() {
             </AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to ban the account of <strong className="text-foreground">{banDialog?.name}</strong>? 
-              They will be kicked out immediately and cannot log back into the Tammi platform.
+              They will be kicked out immediately and cannot log back into the Tami platform.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

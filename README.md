@@ -1,4 +1,4 @@
-# Tammi
+# Tami
 
 A Video Streaming Website built with Next.js, Drizzle ORM, and modern UI libraries, featuring advanced video processing, real-time transcription, and a responsive design.
 
